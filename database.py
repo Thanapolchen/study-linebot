@@ -1,17 +1,23 @@
 import os
+import re
 import sqlite3
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
 
-# Wrapper class เพื่อให้ psycopg2 เข้าถึงข้อมูลแบบ dict / row_factory เหมือน SQLite
 class DictCursorWrapper:
     def __init__(self, cursor, conn):
         self.cursor = cursor
         self.conn = conn
 
     def execute(self, query, params=None):
+        # 1. แปลง syntax INSERT OR IGNORE ของ SQLite ให้เป็น PostgreSQL
+        if re.search(r"INSERT\s+OR\s+IGNORE\s+INTO", query, re.IGNORECASE):
+            query = re.sub(r"INSERT\s+OR\s+IGNORE\s+INTO", "INSERT INTO", query, flags=re.IGNORECASE)
+            if "ON CONFLICT" not in query.upper():
+                query = f"{query.rstrip(';')} ON CONFLICT DO NOTHING;"
+
+        # 2. แปลง ? เป็น %s สำหรับ psycopg2
         if params is not None:
-            # แปลง parameter ? ของ SQLite เป็น %s ของ PostgreSQL
             query = query.replace("?", "%s")
             self.cursor.execute(query, params)
         else:
@@ -66,10 +72,8 @@ def init_db():
     conn = get_connection()
     cur = conn.cursor()
 
-    # เลือก Syntax AUTO INCREMENT ตามประเภท Database
     auto_inc = "SERIAL PRIMARY KEY" if DATABASE_URL else "INTEGER PRIMARY KEY AUTOINCREMENT"
 
-    # 1. ตารางผู้ใช้
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             line_user_id TEXT PRIMARY KEY,
@@ -77,7 +81,6 @@ def init_db():
         )
     """)
 
-    # 2. ตารางเทอม
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS semesters (
             id {auto_inc},
@@ -86,7 +89,6 @@ def init_db():
         )
     """)
 
-    # 3. ตารางวิชา
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS subjects (
             id {auto_inc},
@@ -98,7 +100,6 @@ def init_db():
         )
     """)
 
-    # 4. ตารางงาน/การบ้าน
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS assignments (
             id {auto_inc},
@@ -109,7 +110,6 @@ def init_db():
         )
     """)
 
-    # 5. ตารางแจ้งเตือน
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS reminders (
             id {auto_inc},
@@ -120,7 +120,6 @@ def init_db():
         )
     """)
 
-    # 6. ตารางการลา
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS leaves (
             id {auto_inc},
@@ -130,7 +129,6 @@ def init_db():
         )
     """)
 
-    # 7. ตารางยกคลาส
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS canceled_classes (
             id {auto_inc},
@@ -140,7 +138,6 @@ def init_db():
         )
     """)
 
-    # 8. ตารางอีเวนต์/กิจกรรมพิเศษ
     cur.execute(f"""
         CREATE TABLE IF NOT EXISTS special_events (
             id {auto_inc},
