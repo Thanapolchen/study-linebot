@@ -42,12 +42,13 @@ scheduler = BackgroundScheduler(timezone="Asia/Bangkok")
 scheduler.add_job(check_reminders, "interval", seconds=30)
 scheduler.start()
 
-# --- Webhook Endpoint ---
-@app.post("/callback")
+# --- Root & Webhook Endpoint ---
+@app.get("/")
+def root():
+    return {"status": "ok", "message": "Study Assistant Bot is running!"}
+
+@app.api_route("/callback", methods=["GET", "POST"])
 async def callback(request: Request):
-    signature = request.headers.get("X-Line-Signature", "")
-    body = await request.body()
-    body_str = body.decode("utf-8")
 
     try:
         handler.handle(body_str, signature)
