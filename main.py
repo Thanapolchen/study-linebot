@@ -46,14 +46,22 @@ scheduler.start()
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Study Assistant Bot is running!"}
-
 @app.api_route("/callback", methods=["GET", "POST"])
 async def callback(request: Request):
+    if request.method == "GET":
+        return {"status": "ok", "message": "Callback endpoint is ready!"}
+    
+    signature = request.headers.get("X-Line-Signature", "")
+    body = await request.body()
+    body_str = body.decode("utf-8")
 
     try:
         handler.handle(body_str, signature)
     except InvalidSignatureError:
         raise HTTPException(status_code=400, detail="Invalid signature")
+    except Exception as e:
+        print(f"Error handling callback: {e}")
+        return "OK"
     return "OK"
 
 HELP_TEXT = """🤖 เมนูคำสั่ง Study Assistant:
