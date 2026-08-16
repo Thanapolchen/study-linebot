@@ -65,21 +65,16 @@ HELP_TEXT = """🤖 เมนูคำสั่ง Study Assistant:
 📚 วิชา
 • +วิชา [ชื่อ] [รหัส] [ห้อง] [โควตาลา]
 • ดูวิชา (แสดงรายชื่อวิชาทั้งหมด)
-• -วิชา [ชื่อวิชา] (ลบวิชาและงานในวิชา)
 
 📝 การบ้าน & แจ้งเตือน
 • +งาน [วิชา] [ชื่องาน] [วัน เวลาส่ง]
 • เช็คงาน (ดูงานทั้งหมด)
 • ส่งแล้ว [ชื่องาน]
-• -งาน [ชื่องาน] (ลบงาน)
 • +เตือน [ข้อความ] [วัน เวลา]
-• -เตือน [ข้อความ] (ลบการแจ้งเตือน)
 
 🎉 กิจกรรม & ยกคลาส
 • +ยกคลาส [วิชา] [วันที่] [เหตุผล]
-• -ยกคลาส [วิชา] (ลบรายการยกคลาส)
 • +อีเวนต์ [ชื่องาน] [วัน เวลา]
-• -อีเวนต์ [ชื่องาน] (ลบอีเวนต์)
 • เช็คกิจกรรม
 
 🚫 การลา
@@ -187,28 +182,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 6. ลบวิชา: -วิชา [ชื่อวิชา]
-    if user_text.startswith("-วิชา"):
-        if not active_semester_id:
-            reply = "⚠️ กรุณาเลือกเทอมก่อน"
-        else:
-            sub_name = user_text.replace("-วิชา", "").strip()
-            cursor.execute("SELECT id FROM subjects WHERE semester_id = ? AND name = ?", (active_semester_id, sub_name))
-            sub = cursor.fetchone()
-            if sub:
-                cursor.execute("DELETE FROM assignments WHERE subject_id = ?", (sub["id"],))
-                cursor.execute("DELETE FROM leaves WHERE subject_id = ?", (sub["id"],))
-                cursor.execute("DELETE FROM canceled_classes WHERE subject_id = ?", (sub["id"],))
-                cursor.execute("DELETE FROM subjects WHERE id = ?", (sub["id"],))
-                conn.commit()
-                reply = f"🗑️ ลบวิชา '{sub_name}' และข้อมูลงาน/การลาที่เกี่ยวข้องเรียบร้อยแล้ว"
-            else:
-                reply = f"❌ ไม่พบวิชา '{sub_name}' ในเทอมนี้"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        conn.close()
-        return
-
-    # 7. ดูวิชาทั้งหมด
+    # 6. ดูวิชาทั้งหมด
     if user_text in ["ดูวิชา", "เช็ควิชา", "รายวิชา"]:
         if not active_semester_id:
             reply = "⚠️ ยังไม่ได้เลือกเทอม"
@@ -229,7 +203,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 8. เพิ่มงาน
+    # 7. เพิ่มงาน
     if user_text.startswith("+งาน"):
         if not active_semester_id:
             reply = "⚠️ กรุณาเพิ่มเทอมก่อน เช่น: +เทอม 1/2569"
@@ -257,26 +231,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 9. ลบงาน: -งาน [ชื่องาน]
-    if user_text.startswith("-งาน"):
-        if not active_semester_id:
-            reply = "⚠️ กรุณาเลือกเทอมก่อน"
-        else:
-            task_name = user_text.replace("-งาน", "").strip()
-            cursor.execute("""
-                DELETE FROM assignments 
-                WHERE title = ? AND subject_id IN (SELECT id FROM subjects WHERE semester_id = ?)
-            """, (task_name, active_semester_id))
-            conn.commit()
-            if cursor.rowcount > 0:
-                reply = f"🗑️ ลบงาน '{task_name}' เรียบร้อยแล้ว"
-            else:
-                reply = f"❌ ไม่พบงานชื่อ '{task_name}' ในเทอมนี้"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        conn.close()
-        return
-
-    # 10. เช็คงาน
+    # 8. เช็คงาน
     if user_text in ["เช็คงาน", "ดูงาน", "การบ้าน"]:
         if not active_semester_id:
             reply = "⚠️ ยังไม่ได้เลือกเทอม"
@@ -300,7 +255,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 11. ส่งงานแล้ว
+    # 9. ส่งงานแล้ว
     if user_text.startswith("ส่งแล้ว"):
         task_name = user_text.replace("ส่งแล้ว", "").strip()
         if not task_name:
@@ -320,7 +275,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 12. เพิ่มการยกคลาส
+    # 10. เพิ่มการยกคลาส
     if user_text.startswith("+ยกคลาส"):
         if not active_semester_id:
             reply = "⚠️ กรุณาเพิ่มเทอมก่อน"
@@ -347,25 +302,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 13. ลบยกคลาส: -ยกคลาส [วิชา]
-    if user_text.startswith("-ยกคลาส"):
-        if not active_semester_id:
-            reply = "⚠️ กรุณาเลือกเทอมก่อน"
-        else:
-            sub_name = user_text.replace("-ยกคลาส", "").strip()
-            cursor.execute("SELECT id FROM subjects WHERE semester_id = ? AND name = ?", (active_semester_id, sub_name))
-            sub = cursor.fetchone()
-            if sub:
-                cursor.execute("DELETE FROM canceled_classes WHERE subject_id = ?", (sub["id"],))
-                conn.commit()
-                reply = f"🗑️ ลบรายการยกคลาสวิชา '{sub_name}' เรียบร้อยแล้ว"
-            else:
-                reply = f"❌ ไม่พบวิชา '{sub_name}'"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        conn.close()
-        return
-
-    # 14. เพิ่มอีเวนต์
+    # 11. เพิ่มอีเวนต์/กิจกรรม
     if user_text.startswith("+อีเวนต์") or user_text.startswith("+กิจกรรม"):
         parts = user_text.split()
         if len(parts) >= 4:
@@ -383,20 +320,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 15. ลบอีเวนต์: -อีเวนต์ [ชื่องาน]
-    if user_text.startswith("-อีเวนต์") or user_text.startswith("-กิจกรรม"):
-        event_title = user_text.replace("-อีเวนต์", "").replace("-กิจกรรม", "").strip()
-        cursor.execute("DELETE FROM special_events WHERE line_user_id = ? AND title = ?", (user_id, event_title))
-        conn.commit()
-        if cursor.rowcount > 0:
-            reply = f"🗑️ ลบกิจกรรม '{event_title}' เรียบร้อยแล้ว"
-        else:
-            reply = f"❌ ไม่พบกิจกรรมชื่อ '{event_title}'"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        conn.close()
-        return
-
-    # 16. เช็คกิจกรรม/ยกคลาส
+    # 12. เช็คกิจกรรม/ยกคลาส
     if user_text in ["เช็คกิจกรรม", "ดูกิจกรรม", "ดูกิจกรรมพิเศษ", "ดูยกคลาส"]:
         today_str = datetime.now().strftime("%Y-%m-%d")
         
@@ -435,7 +359,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 17. เพิ่มการแจ้งเตือน
+    # 13. เพิ่มการแจ้งเตือน
     if user_text.startswith("+เตือน"):
         parts = user_text.split()
         if len(parts) >= 4:
@@ -453,20 +377,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 18. ลบแจ้งเตือน: -เตือน [ข้อความ]
-    if user_text.startswith("-เตือน"):
-        remind_msg = user_text.replace("-เตือน", "").strip()
-        cursor.execute("DELETE FROM reminders WHERE line_user_id = ? AND message = ?", (user_id, remind_msg))
-        conn.commit()
-        if cursor.rowcount > 0:
-            reply = f"🗑️ ลบการแจ้งเตือน '{remind_msg}' เรียบร้อยแล้ว"
-        else:
-            reply = f"❌ ไม่พบการแจ้งเตือนข้อความ '{remind_msg}'"
-        line_bot_api.reply_message(event.reply_token, TextSendMessage(text=reply))
-        conn.close()
-        return
-
-    # 19. บันทึกการลา
+    # 14. บันทึกการลา
     if user_text.startswith("ลา"):
         if not active_semester_id:
             reply = "⚠️ กรุณาเพิ่มเทอมก่อน"
@@ -494,7 +405,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 20. เช็กลา
+    # 15. เช็กลา
     if user_text == "เช็กลา":
         if not active_semester_id:
             reply = "ยังไม่มีข้อมูลภาคเรียน"
@@ -514,7 +425,7 @@ def handle_message(event):
         conn.close()
         return
 
-    # 21. สรุปภาพรวม
+    # 16. สรุปภาพรวม
     if user_text == "สรุป":
         if not active_semester_id:
             reply = "⚠️ ยังไม่ได้เลือกเทอม กรุณาพิมพ์ 'ดูเทอม' หรือ '+เทอม [ชื่อเทอม]'"
